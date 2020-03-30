@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 import scrapy
+import logging
 
 
 class CountriesSpider(scrapy.Spider):
     name = 'countries'
+    
     allowed_domains = ['https://www.worldometers.info/']
     start_urls = ['https://www.worldometers.info/world-population/population-by-country/']
 
@@ -15,8 +17,25 @@ class CountriesSpider(scrapy.Spider):
             name  = country.xpath(".//text()").get()
             link  = country.xpath(".//@href").get()
 
+            # absolute_url = f"https://www.worldometers.info{link}"
+            
+            ''' dont filter , so it can do as many similar requests as the loop length '''
+            # absolute_url = response.urljoin(link)
+            # yield scrapy.Request(url=absolute_url, dont_filter=True)
+            
+            ## dont filter , so it can do as many requests as the loop length
+            
+            yield response.follow(url=link, dont_filter=True, callback=self.parse_country,  meta={'country_name': name})
+        
+    def parse_country(self , response):
+        name = response.request.meta['country_name']
+        rows = response.xpath("(//table[@class='table table-striped table-bordered table-hover table-condensed table-list'])[1]/tbody/tr")
+        for row in rows:
+            year = row.xpath(".//td[1]/text()").get()
+            population = row.xpath(".//td[2]/strong/text()").get()
+
             yield{
-                # 'title' : title,
-                'name' : name,
-                'link' : link
+                'country_name' : name,
+                'year' : year,
+                'population' : population
             }
